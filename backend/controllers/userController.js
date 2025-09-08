@@ -1,11 +1,12 @@
 import asyncHandler from "express-async-handler";
 import User from "../models/user.js";
+import { successResponse, errorResponse } from "../utils/response.js";
 
 // @desc    Get all users
 // @route   GET /api/users
 export const getUsers = asyncHandler(async (req, res) => {
-  const users = await User.find().select("-password"); // hide password
-  res.json(users);
+  const users = await User.find().select("-password");
+  return successResponse(res, users, "Users fetched successfully");
 });
 
 // @desc    Get single user
@@ -13,17 +14,22 @@ export const getUsers = asyncHandler(async (req, res) => {
 export const getUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id).select("-password");
   if (!user) {
-    res.status(404);
-    throw new Error("User not found");
+    return errorResponse(res, "User not found", 404);
   }
-  res.json(user);
+  return successResponse(res, user, "User fetched successfully");
 });
 
 // @desc    Create a new user
 // @route   POST /api/users
 export const createUser = asyncHandler(async (req, res) => {
+
+  const user = await User.find({ email: req.email });
+
+  if (user) {
+    return errorResponse(res, "User already exists", 409);
+  }
   const newUser = await User.create(req.body);
-  res.status(201).json(newUser);
+  return successResponse(res, newUser, "User created successfully", 201);
 });
 
 // @desc    Update user
@@ -34,11 +40,10 @@ export const updateUser = asyncHandler(async (req, res) => {
   }).select("-password");
 
   if (!updatedUser) {
-    res.status(404);
-    throw new Error("User not found");
+    return errorResponse(res, "User not found", 404);
   }
 
-  res.json(updatedUser);
+  return successResponse(res, updatedUser, "User updated successfully");
 });
 
 // @desc    Delete user
@@ -47,9 +52,8 @@ export const deleteUser = asyncHandler(async (req, res) => {
   const deletedUser = await User.findByIdAndDelete(req.params.id);
 
   if (!deletedUser) {
-    res.status(404);
-    throw new Error("User not found");
+    return errorResponse(res, "User not found", 404);
   }
 
-  res.json({ message: "User deleted successfully" });
+  return successResponse(res, {}, "User deleted successfully");
 });
