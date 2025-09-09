@@ -1,27 +1,28 @@
-import express from "express";
-import {
-  getClients,
-  getClient,
-  createClient,
-  updateClient,
-  deleteClient,
-} from "../controllers/clientController.js";
+  import express from "express";
+  import {
+    getClients,
+    getClient,
+    createClient,
+    updateClient,
+    deleteClient,
+  } from "../controllers/clientController.js";
+  import { protect, authorize} from "../middlewares/authMiddleware.js";
 
-const router = express.Router();
+  const router = express.Router();
 
-// GET all clients
-router.get("/", getClients);
+// GET all clients - Admin/Manager only
+router.get("/", protect, authorize("admin", "manager"), getClients);
 
-// GET single client by ID
-router.get("/:id", getClient);
+// GET single client by ID - Owner/Admin/Manager
+router.get("/:id", protect, getClient);
 
-// CREATE a new client
-router.post("/", createClient);
+// CREATE a new client - Any logged-in user
+router.post("/", protect, createClient);
 
-// UPDATE client
-router.put("/:id", updateClient);
+// UPDATE client - Owner/Admin/Manager
+router.put("/:id", protect, updateClient);
 
-// DELETE client
-router.delete("/:id", deleteClient);
+// DELETE client - Admin or Owner
+router.delete("/:id", protect, deleteClient);
 
-export default router;
+  export default router;

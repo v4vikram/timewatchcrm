@@ -6,22 +6,25 @@ import {
   updateUser,
   deleteUser
 } from "../controllers/userController.js";
+import { protect, authorize } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// GET all users
-router.get("/", getUsers);
 
-// GET a single user by ID
-router.get("/:id", getUser);
+// GET all users - ADMIN only
+router.get("/", protect, authorize("admin"), getUsers);
 
-// CREATE a new user
-router.post("/", createUser);
+// GET a single user by ID - ADMIN only
+router.get("/:id", protect, authorize("admin"), getUser);
 
-// UPDATE a user
-router.put("/:id", updateUser);
+// CREATE a new user - ADMIN only
+router.post("/", protect, authorize("admin"), createUser);
 
-// DELETE a user
-router.delete("/:id", deleteUser);
+// UPDATE a user - ADMIN or SELF
+router.put("/:id", protect, updateUser); 
+// (inside controller, check if req.user.id === req.params.id OR req.user.role === 'admin')
+
+// DELETE a user - ADMIN only
+router.delete("/:id", protect, authorize("admin"), deleteUser);
 
 export default router;

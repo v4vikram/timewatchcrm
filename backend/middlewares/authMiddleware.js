@@ -1,21 +1,41 @@
-// import jwt from "jsonwebtoken";
-// import User from "../models/UserModel.js";
+import asyncHandler from "express-async-handler";
+import jwt from "jsonwebtoken";
+import User from "../models/user.js";
+import { errorResponse } from "../utils/response.js";
 
-// export const protect = async (req, res, next) => {
-//   const token = req.cookies.token;
+export const protect = asyncHandler(async (req, res, next) => {
+  let token;
 
-//   if (!token) return res.status(401).json({ message: "Not authorized, no token" });
+  // Expect Authorization: Bearer <token>
+  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
+  } else if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
 
-//   try {
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  if (!token) {
+    return errorResponse(res, "Not authorized, token missing", 401);
+  }
 
-//     // Fetch user from DB
-//     const user = await User.findById(decoded.id).select("-password"); // exclude password
-//     if (!user) return res.status(404).json({ message: "User not found" });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) return errorResponse(res, "Not authorized", 401);
+    req.user = { id: user._id.toString(), role: user.role };
+    next();
+  } catch (err) {
+    return errorResponse(res, "Not authorized, token invalid", 401);
+  }
+});
 
-//     req.user = user; // attach user info to request
-//     next();
-//   } catch (error) {
-//     res.status(401).json({ message: "Not authorized, token failed" });
-//   }
-// };
+// RBAC: allowedRoles is array or string(s)
+export const authorize = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) return errorResponse(res, "Not authorized", 401);
+    const role = req.user.role;
+    if (!allowedRoles.length) return next(); // if no roles specified => allow
+    const allowed = allowedRoles.some(r => r === role);
+    if (!allowed) return errorResponse(res, "Forbidden - insufficient permissions", 403);
+    next();
+  };
+};
