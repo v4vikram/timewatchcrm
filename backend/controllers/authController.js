@@ -29,25 +29,31 @@ export const register = asyncHandler(async (req, res) => {
 // @route POST /api/auth/login
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return errorResponse(res, "Email and password required", 400);
+  if (!email || !password) return errorResponse(res, {email:"Email and password required"}, 400);
 
   const user = await User.findOne({ email });
-
-  if (!user) return errorResponse(res, "User not exits", 401);
+  if (!user) return errorResponse(res, {email:"Email not exists"}, 401);
 
   const isMatch = await bcrypt.compare(password, user.password);
-  console.log("Plain password:", password);
-  console.log("Hashed password from DB:", user.password);
-  console.log("Password match:", isMatch);
-  if (!isMatch) return errorResponse(res, "Invalid credentials2", 401);
+  if (!isMatch) return errorResponse(res, {password: "Invalid credentials"}, 401);
 
   const token = generateToken({ id: user._id, role: user.role });
 
+  // Convert mongoose document to plain object
   const userRes = user.toObject();
   delete userRes.password;
 
-  return successResponse(res, { user: userRes, token }, "Logged in", 200);
+  // ✅ Set token in HTTP-only cookie
+  res.cookie("token", token, {
+    httpOnly: true,        // cannot be accessed via JS
+    secure: process.env.NODE_ENV === "production", // only send over https
+    sameSite: "strict",    // helps against CSRF
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+
+  return successResponse(res, { user: userRes }, "Logged in", 200);
 });
+
 
 // @route GET /api/auth/me
 export const getMe = asyncHandler(async (req, res) => {
@@ -55,4 +61,15 @@ export const getMe = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id).select("-password");
   if (!user) return errorResponse(res, "User not found", 404);
   return successResponse(res, user, "Profile fetched");
+});
+
+// @route POST /api/auth/logout
+export const logout = asyncHandler(async (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", // only over HTTPS in prod
+    sameSite: "strict",
+  });
+
+  return successResponse(res, null, "Logged out successfully");
 });

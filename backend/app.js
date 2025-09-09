@@ -5,7 +5,7 @@ dotenv.config();
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import errorHandler from "./middlewares/errorHandler.js";
+import errorMiddleware from "./middlewares/errorMiddleware.js";
 import routeStartup from "./routes/routeStartup.js";
 import connectDB from "./config/db.js";
 import cookieParser from "cookie-parser";
@@ -42,6 +42,6 @@ app.use(express.static("public")); // serve uploaded files
 routeStartup(app);
 
 // Error Handler
-app.use(errorHandler);
+app.use(errorMiddleware);
 
 export default app;
